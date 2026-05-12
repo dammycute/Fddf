@@ -22,6 +22,18 @@ def dispatch(cmd, engine):
     elif cmd_type == "GET_LEAGUE_TABLE":
         return engine.get_league_table(payload["league_id"])
 
+    elif cmd_type == "GET_TRANSFER_OFFERS":
+        return engine.get_transfer_offers(payload["club_id"])
+
+    elif cmd_type == "GET_MANAGER_INFO":
+        return engine.get_manager_info(payload["club_id"])
+
+    elif cmd_type == "RESPOND_TO_OFFER":
+        return engine.respond_to_offer(payload["offer_id"], payload["accept"])
+
+    elif cmd_type == "GET_MATCH_REPORT":
+        return engine.get_match_report(payload["fixture_id"])
+
     else:
         raise ValueError(f"Unknown command: {cmd_type}")
 

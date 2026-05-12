@@ -4,7 +4,7 @@ from collections import defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from engine.models import Base, Club, Fixture, GameMeta
+from engine.models import Base, Club, Fixture, GameMeta, MatchReport, Player, TransferOffer
 from engine.utils.generator import seed_world
 from engine.systems.fixture_engine import generate_fixtures
 from engine.systems.match_system import MatchSystem
@@ -13,6 +13,8 @@ from engine.systems.player_development import PlayerDevelopmentSystem
 from engine.systems.morale import MoraleSystem
 from engine.systems.injury import InjurySystem
 from engine.systems.aging import AgingSystem
+from engine.ai.manager_ai import ManagerAI
+from engine.ai.recruitment import RecruitmentAI
 import os
 
 
@@ -20,6 +22,17 @@ class SimulationEngine:
     def __init__(self, db_path: str):
         self.db_path = db_path
         db_exists = os.path.exists(db_path)
+
+        # Systems and AI
+        self.match_system = MatchSystem()
+        self.finance_system = FinanceSystem()
+        self.transfer_system = TransferSystem()
+        self.injury_system = InjurySystem()
+        self.morale_system = MoraleSystem()
+        self.development_system = PlayerDevelopmentSystem()
+        self.aging_system = AgingSystem()
+        self.manager_ai = ManagerAI()
+        self.recruitment_ai = RecruitmentAI()
 
         self.engine = create_engine(f'sqlite:///{db_path}')
         Base.metadata.create_all(self.engine)
@@ -59,32 +72,45 @@ class SimulationEngine:
         session = self.Session()
         try:
             # Core gameplay systems
-            MatchSystem().process_pending_matches(session, self.game_date)
-            FinanceSystem().process_daily_finances(session)
+            self.match_system.process_pending_matches(session, self.game_date)
+            self.finance_system.process_daily_finances(session)
 
             if self.game_date.weekday() == 0:  # Mondays only
-                TransferSystem().process_ai_transfers(session)
+                self.transfer_system.process_ai_transfers(session)
 
             # New simulation systems
             try:
-                InjurySystem().process(session, self.game_date)
+                self.injury_system.process(session, self.game_date)
             except Exception as e:
                 print(f"InjurySystem failed: {e}")
 
             try:
-                MoraleSystem().process(session, self.game_date)
+                self.morale_system.process(session, self.game_date)
             except Exception as e:
                 print(f"MoraleSystem failed: {e}")
 
             try:
-                PlayerDevelopmentSystem().process(session)
+                self.development_system.process(session)
             except Exception as e:
                 print(f"PlayerDevelopmentSystem failed: {e}")
 
             try:
-                AgingSystem().process(session, self.game_date)
+                self.aging_system.process(session, self.game_date)
             except Exception as e:
                 print(f"AgingSystem failed: {e}")
+
+            try:
+                self.manager_ai.process(session)
+            except Exception as e:
+                print(f"ManagerAI failed: {e}")
+
+            # Transfer Window every 90 ticks
+            meta = session.query(GameMeta).filter_by(key='tick_count').first()
+            if meta and int(meta.value) % 90 == 0:
+                try:
+                    self.run_transfer_window(session)
+                except Exception as e:
+                    print(f"Transfer Window failed: {e}")
 
             self.game_date += datetime.timedelta(days=1)
             self._save_game_date(session)
@@ -135,6 +161,112 @@ class SimulationEngine:
 
         session.close()
         return results
+
+    def run_transfer_window(self, session):
+        self.recruitment_ai.process(session)
+        self.recruitment_ai._resolve_offers(session)
+
+    def get_transfer_offers(self, club_id: int):
+        """Returns all transfer offers involving this club."""
+        session = self.Session()
+        offers = (
+            session.query(TransferOffer)
+            .filter((TransferOffer.from_club_id == club_id) | (TransferOffer.to_club_id == club_id))
+            .order_by(TransferOffer.created_date.desc())
+            .all()
+        )
+        results = []
+        for o in offers:
+            player = session.get(Player, o.player_id)
+            from_club = session.get(Club, o.from_club_id) if o.from_club_id else None
+            to_club = session.get(Club, o.to_club_id) if o.to_club_id else None
+            results.append({
+                "id": o.id,
+                "player_name": player.name if player else "Unknown",
+                "from_club_name": from_club.name if from_club else "AI/Free Agent",
+                "to_club_name": to_club.name if to_club else "AI/Listing",
+                "fee": o.fee,
+                "status": o.status,
+                "is_loan": o.is_loan,
+                "created_date": o.created_date.isoformat() if o.created_date else None
+            })
+        session.close()
+        return results
+
+    def get_manager_info(self, club_id: int):
+        """Returns manager name, morale, demands, contract end date."""
+        session = self.Session()
+        club = session.get(Club, club_id)
+        if not club or not club.manager:
+            session.close()
+            return None
+
+        manager = club.manager
+        data = {
+            "name": manager.name,
+            "morale": manager.morale,
+            "demands": manager.demands,
+            "contract_end": manager.contract.end_date.isoformat() if manager.contract else None
+        }
+        session.close()
+        return data
+
+    def get_match_report(self, fixture_id: int):
+        """Returns MatchReport data plus fixture details (teams, score, date)."""
+        session = self.Session()
+        report = session.query(MatchReport).filter_by(fixture_id=fixture_id).first()
+        fixture = session.get(Fixture, fixture_id)
+
+        if not fixture:
+            session.close()
+            return None
+
+        home_club = session.get(Club, fixture.home_club_id)
+        away_club = session.get(Club, fixture.away_club_id)
+
+        data = {
+            "fixture": {
+                "id": fixture.id,
+                "date": fixture.date.isoformat() if fixture.date else None,
+                "home_name": home_club.name if home_club else "Unknown",
+                "away_name": away_club.name if away_club else "Unknown",
+                "home_goals": fixture.home_goals,
+                "away_goals": fixture.away_goals,
+            },
+            "report": {
+                "home_possession": report.home_possession if report else None,
+                "away_possession": report.away_possession if report else None,
+                "home_shots": report.home_shots if report else 0,
+                "away_shots": report.away_shots if report else 0,
+                "events": report.events if report else []
+            }
+        }
+        session.close()
+        return data
+
+    def respond_to_offer(self, offer_id: int, accept: bool):
+        """Player-controlled club accepts or rejects a transfer offer."""
+        session = self.Session()
+        offer = session.get(TransferOffer, offer_id)
+        if not offer or offer.status != 'PENDING':
+            session.close()
+            return {"ok": False, "error": "Offer not found or not pending"}
+
+        if not accept:
+            offer.status = 'REJECTED'
+            offer.resolved_date = datetime.datetime.now()
+        else:
+            player = session.get(Player, offer.player_id)
+            buyer = session.get(Club, offer.from_club_id)
+            seller = session.get(Club, offer.to_club_id) if offer.to_club_id else None
+
+            # Use logic from RecruitmentAI._execute_transfer
+            from engine.ai.recruitment import RecruitmentAI
+            RecruitmentAI()._execute_transfer(session, offer, player, buyer, seller)
+
+        session.commit()
+        session.close()
+        return {"ok": True}
 
     def get_league_table(self, league_id: int):
         """Compute the league standings from played fixtures."""

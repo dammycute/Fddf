@@ -1,5 +1,5 @@
 from engine.models.base import Base, Stadium, Club, Player, League, Fixture, GameMeta
-from engine.models.history import ClubHistory, NewsEvent
+from engine.models.history import ClubHistory, NewsEvent, MatchReport
 from engine.models.personality import Personality
 from engine.models.contracts import PlayerContract, ManagerContract
 from engine.models.staff import Manager, Scout
@@ -11,7 +11,7 @@ from engine.models.youth import YouthPlayer
 
 __all__ = [
     "Base", "Stadium", "Club", "Player", "League", "Fixture", "GameMeta",
-    "ClubHistory", "NewsEvent",
+    "ClubHistory", "NewsEvent", "MatchReport",
     "Personality",
     "PlayerContract", "ManagerContract",
     "Manager", "Scout",
