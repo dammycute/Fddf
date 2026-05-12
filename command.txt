@@ -1,0 +1,149 @@
+Universal command
+
+
+
+
+All systems command
+You are extending the SQLAlchemy models for a football chairman simulation.
+All models go in engine/models/. Do not touch engine/models/base.py unless 
+adding a relationship. Create new files for new model groups.
+
+The existing models are:
+  base.py      → Club, Player, League, Fixture, Stadium, GameMeta
+  history.py   → ClubHistory, NewsEvent
+  personality.py → Personality
+
+TASK 1 — Create engine/models/contracts.py:
+  PlayerContract:
+    id, player_id (FK players), club_id (FK clubs)
+    wage (Integer), start_date (DateTime), end_date (DateTime)
+    release_clause (Integer, nullable)
+    status: 'ACTIVE' | 'EXPIRED' | 'TERMINATED'
+    
+  ManagerContract:
+    id, manager_id (FK managers), club_id (FK clubs)
+    wage (Integer), start_date (DateTime), end_date (DateTime)
+    sack_compensation (Integer)
+    status: 'ACTIVE' | 'EXPIRED' | 'TERMINATED'
+
+TASK 2 — Create engine/models/staff.py:
+  Manager:
+    id, name, age, nationality
+    tactical_style: JSON  (e.g. {"preferred_formation": "4-3-3", "style": "pressing"})
+    reputation (Integer 0-10000)
+    preferred_formations: JSON (list of strings)
+    man_management (Integer 1-20)
+    tactical_knowledge (Integer 1-20)
+    youth_development (Integer 1-20)
+    ambition (Integer 1-20)
+    club_id (FK clubs, nullable — may be unemployed)
+    morale (Integer 0-100)
+    demands: JSON  (e.g. {"transfer_budget": 5000000, "promises": ["sign_striker"]})
+
+  Scout:
+    id, name, club_id (FK clubs)
+    ability (Integer 1-20)
+    judgment (Integer 1-20)
+    network: JSON  (list of country strings they cover well)
+
+TASK 3 — Create engine/models/transfers.py:
+  TransferOffer:
+    id, player_id (FK players)
+    from_club_id (FK clubs), to_club_id (FK clubs)
+    fee (Integer), status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
+    created_date (DateTime), resolved_date (DateTime, nullable)
+    installments (Integer, default 1)
+    is_loan (Boolean, default False)
+
+  ScoutReport:
+    id, player_id (FK players), scout_id (FK scouts)
+    club_id (FK clubs)
+    created_date (DateTime)
+    ca_estimate (Integer)
+    pa_estimate (Integer)
+    notes (String)
+    attributes_snapshot: JSON
+
+TASK 4 — Create engine/models/finance.py:
+  FinancialRecord:
+    id, club_id (FK clubs), date (DateTime)
+    record_type: 'WAGE' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 
+                 'TICKET' | 'SPONSORSHIP' | 'TV_RIGHTS' | 'OTHER'
+    amount (Integer)  — positive = income, negative = expense
+    description (String)
+
+  Sponsorship:
+    id, club_id (FK clubs)
+    sponsor_name (String)
+    amount_per_season (Integer)
+    start_season (Integer), end_season (Integer)
+    status: 'ACTIVE' | 'EXPIRED'
+
+TASK 5 — Create engine/models/world.py:
+  Season:
+    id, league_id (FK leagues)
+    season_number (Integer)  — e.g. 1, 2, 3 representing years
+    start_date (DateTime), end_date (DateTime)
+    status: 'ACTIVE' | 'COMPLETED'
+    champion_club_id (FK clubs, nullable)
+
+  LeagueStanding:
+    id, season_id (FK seasons), club_id (FK clubs)
+    played, won, drawn, lost, gf, ga, gd, points (all Integer)
+    form: JSON  (last 5 results as list of 'W'/'D'/'L')
+
+  Rivalry:
+    id, club_a_id (FK clubs), club_b_id (FK clubs)
+    intensity (Integer 1-10)
+    rivalry_type: 'LOCAL' | 'HISTORIC' | 'TITLE'
+
+TASK 6 — Create engine/models/facilities.py:
+  Facilities:
+    id, club_id (FK clubs, unique)
+    training_level (Integer 1-5)
+    medical_level (Integer 1-5)
+    youth_level (Integer 1-5)
+    training_upgrade_cost (Integer)
+    medical_upgrade_cost (Integer)
+    youth_upgrade_cost (Integer)
+    upgrade_in_progress: JSON  
+      (nullable, e.g. {"type": "training", "complete_date": "2024-08-01"})
+
+TASK 7 — Create engine/models/youth.py:
+  YouthPlayer:
+    id, club_id (FK clubs)
+    name, age, nationality
+    position (String)
+    pa (Integer)  — potential only, CA is low initially
+    personality_id (FK personalities, nullable)
+    intake_season (Integer)
+    promoted (Boolean, default False)
+
+TASK 8 — Update engine/models/base.py relationships only:
+  On Club, add these relationships (do not change columns):
+    manager       → relationship("Manager", back_populates="club", uselist=False)
+    contracts     → relationship("PlayerContract", back_populates="club")
+    facilities    → relationship("Facilities", back_populates="club", uselist=False)
+    financial_records → relationship("FinancialRecord", back_populates="club")
+    youth_players → relationship("YouthPlayer", back_populates="club")
+    scouts        → relationship("Scout", back_populates="club")
+
+  On Player, add:
+    contract      → relationship("PlayerContract", back_populates="player", uselist=False)
+    transfer_offers → relationship("TransferOffer", back_populates="player")
+
+TASK 9 — Update engine/utils/generator.py:
+  After creating each club, also create:
+  - A Facilities record (random levels 1-3 for new clubs, 3-5 for high reputation)
+  - A Manager (random name, random attributes, linked to club)
+  - A ManagerContract (wage = club.reputation // 10, 3 year duration)
+  - A PlayerContract for each player (wage = player.ca * 50, 2-4 year random duration)
+  - A Sponsorship (amount = club.reputation * 500, 3 seasons)
+  - 5 YouthPlayer records per club
+
+Ensure all new models are imported in engine/models/__init__.py 
+(create this file if it doesn't exist) so Base.metadata.create_all picks them up.
+Make sure engine/core/simulation.py imports from engine/models/__init__.py.
+
+
+

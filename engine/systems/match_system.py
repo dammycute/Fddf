@@ -11,8 +11,8 @@ class MatchSystem:
         ).all()
 
         for fixture in pending:
-            home_club = session.query(Club).get(fixture.home_club_id)
-            away_club = session.query(Club).get(fixture.away_club_id)
+            home_club = session.get(Club, fixture.home_club_id)
+            away_club = session.get(Club, fixture.away_club_id)
 
             # Prepare team data for match engine
             # (In reality, we'd fetch the current lineup/tactics)

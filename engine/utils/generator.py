@@ -1,5 +1,5 @@
 import random
-from engine.models.base import Club, Player, League
+from engine.models.base import Club, Player, League, Stadium
 from sqlalchemy.orm import Session
 
 def generate_player(club_id=None):
@@ -34,7 +34,14 @@ def seed_world(session: Session):
     # Create some clubs
     club_names = ["London FC", "Manchester Blues", "Liverpool Reds", "Birmingham Lions"]
     for name in club_names:
-        club = Club(name=name, reputation=random.randint(5000, 8000))
+        stadium = Stadium(
+            name=f"{name} Stadium",
+            capacity=random.randint(15000, 75000)
+        )
+        session.add(stadium)
+        session.flush()
+
+        club = Club(name=name, stadium_id=stadium.id, reputation=random.randint(5000, 8000))
         session.add(club)
         session.flush()
 

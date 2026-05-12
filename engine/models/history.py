@@ -15,5 +15,5 @@ class NewsEvent(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String)
     content = Column(String)
-    date = Column(DateTime, default=datetime.datetime.now)
+    date = Column(DateTime, default=datetime.datetime.utcnow)
     importance = Column(Integer, default=1)

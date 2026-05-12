@@ -1,9 +1,17 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 import datetime
 
 Base = declarative_base()
+
+class Stadium(Base):
+    __tablename__ = 'stadiums'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    capacity = Column(Integer)
+
+    clubs = relationship("Club", backref="stadium")
 
 class Club(Base):
     __tablename__ = 'clubs'
@@ -61,8 +69,8 @@ class Fixture(Base):
     away_goals = Column(Integer)
     match_report_id = Column(String)
 
-class Stadium(Base):
-    __tablename__ = 'stadiums'
+class GameMeta(Base):
+    __tablename__ = 'game_meta'
     id = Column(Integer, primary_key=True)
-    name = Column(String)
-    capacity = Column(Integer)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(String)

@@ -1,8 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { GameCommand, GameResponse } from './types.js';
 
 contextBridge.exposeInMainWorld('api', {
-  send: (channel: string, data: any) => ipcRenderer.send(channel, data),
-  receive: (channel: string, func: (...args: any[]) => void) => {
-    ipcRenderer.on(channel, (event, ...args) => func(...args));
+  /**
+   * Send a command to the Python simulation engine.
+   */
+  command(payload: GameCommand): void {
+    ipcRenderer.send('game:command', payload);
+  },
+
+  /**
+   * Register a callback for engine responses.
+   */
+  onResponse(cb: (res: GameResponse) => void): void {
+    ipcRenderer.on('game:response', (_event, data: GameResponse) => cb(data));
   },
 });
+
+// Re-export types for the UI layer to consume
+export type { GameCommand, GameResponse };
