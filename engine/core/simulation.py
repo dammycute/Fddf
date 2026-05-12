@@ -141,6 +141,16 @@ class SimulationEngine:
         players = session.query(Player).filter_by(club_id=club_id).all()
         results = []
         for p in players:
+            contract_data = None
+            if p.contract:
+                contract_data = {
+                    "id": p.contract.id,
+                    "wage": p.contract.wage,
+                    "end_date": p.contract.end_date.isoformat() if p.contract.end_date else None,
+                    "release_clause": p.contract.release_clause,
+                    "status": p.contract.status
+                }
+
             results.append({
                 "id": p.id,
                 "club_id": p.club_id,
@@ -152,7 +162,8 @@ class SimulationEngine:
                 "pa": p.pa,
                 "fitness": p.fitness,
                 "stamina": p.stamina,
-                "morale": p.morale
+                "morale": p.morale,
+                "contract": contract_data
             })
         session.close()
         return results
@@ -223,6 +234,36 @@ class SimulationEngine:
                 "achievement": h.achievement,
                 "data": h.data
             })
+        session.close()
+        return results
+
+    def get_financials(self, club_id: int):
+        from engine.models.finance import FinancialRecord, Sponsorship
+        session = self.Session()
+        records = (
+            session.query(FinancialRecord)
+            .filter_by(club_id=club_id)
+            .order_by(FinancialRecord.date.desc())
+            .limit(50)
+            .all()
+        )
+        sponsorships = session.query(Sponsorship).filter_by(club_id=club_id, status='ACTIVE').all()
+
+        results = {
+            "records": [{
+                "id": r.id,
+                "date": r.date.isoformat(),
+                "type": r.record_type,
+                "amount": r.amount,
+                "description": r.description
+            } for r in records],
+            "sponsorships": [{
+                "id": s.id,
+                "sponsor": s.sponsor_name,
+                "amount": s.amount_per_season,
+                "end_season": s.end_season
+            } for s in sponsorships]
+        }
         session.close()
         return results
 
@@ -366,6 +407,28 @@ class SimulationEngine:
         }
         session.close()
         return data
+
+    def list_player(self, player_id: int, fee: int):
+        """Manually list a player for transfer."""
+        session = self.Session()
+        player = session.get(Player, player_id)
+        if not player or not player.club_id:
+            session.close()
+            return {"ok": False, "error": "Player not found or has no club"}
+
+        # Create listing
+        offer = TransferOffer(
+            player_id=player.id,
+            from_club_id=player.club_id,
+            to_club_id=None,
+            fee=fee,
+            status='LISTED',
+            created_date=datetime.datetime.now()
+        )
+        session.add(offer)
+        session.commit()
+        session.close()
+        return {"ok": True}
 
     def respond_to_offer(self, offer_id: int, accept: bool):
         """Player-controlled club accepts or rejects a transfer offer."""

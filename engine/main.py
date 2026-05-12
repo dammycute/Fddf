@@ -31,6 +31,9 @@ def dispatch(cmd, engine):
     elif cmd_type == "RESPOND_TO_OFFER":
         return engine.respond_to_offer(payload["offer_id"], payload["accept"])
 
+    elif cmd_type == "LIST_PLAYER":
+        return engine.list_player(payload["player_id"], payload["fee"])
+
     elif cmd_type == "GET_MATCH_REPORT":
         return engine.get_match_report(payload["fixture_id"])
 
@@ -48,6 +51,9 @@ def dispatch(cmd, engine):
 
     elif cmd_type == "GET_CLUB_HISTORY":
         return engine.get_club_history(payload["club_id"])
+
+    elif cmd_type == "GET_FINANCIALS":
+        return engine.get_financials(payload["club_id"])
 
     elif cmd_type == "UPGRADE_FACILITY":
         return engine.upgrade_facility(payload["club_id"], payload["type"])
