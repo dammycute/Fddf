@@ -1,10 +1,15 @@
 from sqlalchemy.orm import Session
 from engine.models import Player, Club, Fixture
 import math
+import datetime
 
 class PlayerDevelopmentSystem:
-    def process(self, session: Session):
-        """Called every tick. Updates player CA based on multiple factors."""
+    def process(self, session: Session, game_date: datetime.date):
+        """Processes monthly player development."""
+        # Only run on the 1st of the month
+        if game_date.day != 1:
+            return
+
         players = session.query(Player).all()
         for player in players:
             self._develop(session, player)

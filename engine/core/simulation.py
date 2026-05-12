@@ -90,7 +90,7 @@ class SimulationEngine:
                 print(f"MoraleSystem failed: {e}")
 
             try:
-                self.development_system.process(session)
+                self.development_system.process(session, self.game_date)
             except Exception as e:
                 print(f"PlayerDevelopmentSystem failed: {e}")
 
