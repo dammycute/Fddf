@@ -1,3 +1,51 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code", monospace;
+}
+
+:root {
+  background-color: #0f1117;
+  color: #e8eaf0;
+
+  --bg-base: #0f1117;
+  --bg-panel: #1a1d26;
+  --bg-raised: #21253a;
+  --bg-input: #2a2f45;
+  --accent: #3b82f6;
+  --accent-dim: #1d4ed8;
+  --text-1: #e8eaf0;
+  --text-2: #9399a8;
+  --text-3: #5a6070;
+  --border: #ffffff12;
+  --border-2: #ffffff1f;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ffffff12;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ffffff1f;
+}

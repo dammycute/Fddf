@@ -16,6 +16,7 @@ interface GameState {
   transferOffers: TransferOffer[];
   facilities: Facilities | null;
   youthPlayers: YouthPlayer[];
+  fanSentiment: number;
   isLoading: boolean;
   lastTickDate: string | null;
 
@@ -36,6 +37,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   transferOffers: [],
   facilities: null,
   youthPlayers: [],
+  fanSentiment: 50,
   isLoading: false,
   lastTickDate: null,
 
@@ -44,7 +46,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     try {
       const [
         club, squad, fixtures, leagueTable,
-        manager, newsFeed, transferOffers, facilities, youthPlayers
+        manager, newsFeed, transferOffers, facilities, youthPlayers,
+        fanSentiment
       ] = await Promise.all([
         api.getClub(clubId),
         api.getSquad(clubId),
@@ -54,12 +57,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         api.getNewsFeed(20),
         api.getTransferOffers(clubId),
         api.getFacilities(clubId),
-        api.getYouthPlayers(clubId)
+        api.getYouthPlayers(clubId),
+        api.getFanSentiment(clubId)
       ]);
 
       set({
         club, squad, fixtures, leagueTable,
         manager, newsFeed, transferOffers, facilities, youthPlayers,
+        fanSentiment: fanSentiment.rating,
         isLoading: false
       });
     } catch (error) {
@@ -78,7 +83,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Re-fetch everything
       const [
         club, squad, fixtures, leagueTable,
-        manager, newsFeed, transferOffers, facilities, youthPlayers
+        manager, newsFeed, transferOffers, facilities, youthPlayers,
+        fanSentiment
       ] = await Promise.all([
         api.getClub(clubId),
         api.getSquad(clubId),
@@ -88,12 +94,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         api.getNewsFeed(20),
         api.getTransferOffers(clubId),
         api.getFacilities(clubId),
-        api.getYouthPlayers(clubId)
+        api.getYouthPlayers(clubId),
+        api.getFanSentiment(clubId)
       ]);
 
       set({
         club, squad, fixtures, leagueTable,
         manager, newsFeed, transferOffers, facilities, youthPlayers,
+        fanSentiment: fanSentiment.rating,
         isLoading: false,
         lastTickDate: new Date().toISOString() // Placeholder for simulation date
       });

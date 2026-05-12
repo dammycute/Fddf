@@ -391,9 +391,14 @@ class SimulationEngine:
         session.close()
         return {"ok": True}
 
+    def get_fan_sentiment(self, club_id: int):
+        # Placeholder logic for fan sentiment
+        return {"club_id": club_id, "rating": 75, "expectation": "Mid-table finish"}
+
     def get_league_table(self, league_id: int):
         """Compute the league standings from played fixtures."""
         session = self.Session()
+        from engine.models import LeagueStanding
         played = (
             session.query(Fixture)
             .filter(Fixture.league_id == league_id, Fixture.status == "PLAYED")
@@ -440,6 +445,7 @@ class SimulationEngine:
             club = session.get(Club, club_id)
             gd = s["gf"] - s["ga"]
             points = s["won"] * 3 + s["drawn"]
+            standing = session.query(LeagueStanding).filter_by(club_id=club_id).first()
             table.append({
                 "club_name": club.name if club else f"Club {club_id}",
                 "played": s["played"],
@@ -450,6 +456,7 @@ class SimulationEngine:
                 "ga": s["ga"],
                 "gd": gd,
                 "points": points,
+                "form": standing.form if standing else []
             })
 
         # Sort by points descending, then goal difference, then goals for

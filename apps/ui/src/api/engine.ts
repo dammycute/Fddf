@@ -1,7 +1,7 @@
 import {
   ClubInfo, Player, Fixture, LeagueRow, Manager,
   TransferOffer, MatchReport, NewsEvent, ClubHistory,
-  Facilities, YouthPlayer
+  Facilities, YouthPlayer, FanSentiment
 } from '../types';
 
 export interface GameCommand {
@@ -29,6 +29,34 @@ if (typeof window !== 'undefined' && window.api) {
       cb(res);
     }
   });
+} else if (typeof window !== 'undefined') {
+  // Mock for browser-only verification
+  (window as any).api = {
+    command: (cmd: any) => {
+      console.log('Mock API Command:', cmd);
+      // Simulate async response
+      setTimeout(() => {
+        let data: any = {};
+        if (cmd.type === 'GET_CLUB') data = { name: 'Mock FC', balance: 50000000 };
+        if (cmd.type === 'GET_SQUAD') data = [];
+        if (cmd.type === 'GET_FIXTURES') data = [];
+        if (cmd.type === 'GET_LEAGUE_TABLE') data = [];
+        if (cmd.type === 'GET_MANAGER_INFO') data = { name: 'Mock Manager', morale: 80 };
+        if (cmd.type === 'GET_TRANSFER_OFFERS') data = [];
+        if (cmd.type === 'GET_NEWS_FEED') data = [];
+        if (cmd.type === 'GET_FACILITIES') data = { training_level: 3, medical_level: 3, youth_level: 3 };
+        if (cmd.type === 'GET_YOUTH') data = [];
+
+        const res: GameResponse = { ok: true, data, request_id: cmd.request_id };
+        // We need to trigger the callback registered in onResponse
+        // In this simple mock, we'll just use a global ref
+        if ((window as any).__api_cb) (window as any).__api_cb(res);
+      }, 100);
+    },
+    onResponse: (cb: any) => {
+      (window as any).__api_cb = cb;
+    }
+  };
 }
 
 function sendCommand<T = unknown>(cmd: GameCommand): Promise<T> {
@@ -89,3 +117,6 @@ export const respondToOffer = (offerId: number, accept: boolean) =>
 
 export const upgradeFacility = (clubId: number, type: 'training' | 'medical' | 'youth') =>
   sendCommand<void>({ type: 'UPGRADE_FACILITY', payload: { club_id: clubId, type } });
+
+export const getFanSentiment = (clubId: number) =>
+  sendCommand<FanSentiment>({ type: 'GET_FAN_SENTIMENT', payload: { club_id: clubId } });
