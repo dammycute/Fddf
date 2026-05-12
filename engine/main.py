@@ -58,6 +58,15 @@ def dispatch(cmd, engine):
     elif cmd_type == "UPGRADE_FACILITY":
         return engine.upgrade_facility(payload["club_id"], payload["type"])
 
+    elif cmd_type == "PROMOTE_YOUTH":
+        return engine.promote_youth(payload["club_id"], payload["youth_player_id"])
+
+    elif cmd_type == "REMOVE_FROM_LIST":
+        return engine.remove_from_list(payload["club_id"], payload["player_id"])
+
+    elif cmd_type == "GET_SCOUT_REPORTS":
+        return engine.get_scout_reports(payload["club_id"])
+
     elif cmd_type == "GET_FAN_SENTIMENT":
         return engine.get_fan_sentiment(payload["club_id"])
 

@@ -1,107 +1,150 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { getYouthPlayers } from '../api/engine';
-import { YouthPlayer } from '../types';
+import { getYouthPlayers, promoteYouth } from '../api/engine';
 import { DataTable } from '../components/layout/DataTable';
-import { StatBar } from '../components/layout/StatBar';
-import { GraduationCap } from 'lucide-react';
+import { School, GraduationCap, Calendar, Star } from 'lucide-react';
+import { YouthPlayer } from '../types';
 
 export const Youth: React.FC = () => {
-  const { club, isLoading: gameLoading } = useGameStore();
+  const { club, lastTickDate } = useGameStore();
   const [players, setPlayers] = useState<YouthPlayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchYouth = async () => {
+  const fetch = async () => {
     if (!club) return;
     try {
-      const data = await getYouthPlayers(club.id);
-      setPlayers(data.filter(p => !p.promoted));
+      const res = await getYouthPlayers(club.id);
+      setPlayers(res.filter(p => !p.promoted));
     } catch (error) {
-      console.error("Failed to fetch youth players:", error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchYouth();
+    fetch();
   }, [club]);
 
-  const columns = [
-    { key: 'name', label: 'Name', width: 200 },
-    { key: 'age', label: 'Age', width: 60, align: 'center' as const },
-    { key: 'position', label: 'Position', width: 100 },
-    { key: 'nationality', label: 'Nat', width: 60 },
-    {
-      key: 'pa',
-      label: 'Potential',
-      render: (val: number) => (
-        <div className="w-24">
-          <StatBar value={val} size="sm" />
-        </div>
-      )
-    },
-    {
-      key: 'intake_season',
-      label: 'Intake',
-      align: 'right' as const,
-      render: (val: number) => <span className="font-mono text-[var(--text-3)]">S{val}</span>
-    },
-    /*
-    {
-      key: 'actions',
-      label: '',
-      align: 'right' as const,
-      render: (_: any, row: YouthPlayer) => (
-        <button
-          className="text-[11px] font-bold uppercase text-[var(--accent)] hover:underline"
-          onClick={() => alert('Promotion logic to be implemented')}
-        >
-          Promote
-        </button>
-      )
-    }
-    */
-  ];
+  const getStars = (pa: number) => {
+    if (pa >= 160) return 5;
+    if (pa >= 140) return 4;
+    if (pa >= 120) return 3;
+    if (pa >= 100) return 2;
+    return 1;
+  };
 
-  if (isLoading || gameLoading) {
-    return <div className="p-8 text-center animate-pulse text-[var(--text-2)] uppercase tracking-widest">Scouting Youth Academy...</div>;
-  }
+  const renderStars = (pa: number) => {
+    const count = getStars(pa);
+    return (
+      <div className="flex gap-0.5 text-[var(--amber)]">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star key={i} size={12} fill={i < count ? "currentColor" : "none"} strokeWidth={2} />
+        ))}
+      </div>
+    );
+  };
+
+  if (isLoading) return <div className="p-8 text-center animate-pulse uppercase tracking-widest text-[var(--text-3)]">Scouting Academy...</div>;
+
+  const bestPA = players.length > 0 ? Math.max(...players.map(p => p.pa)) : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[var(--bg-raised)] border border-[var(--border)] text-[var(--accent)]">
-            <GraduationCap size={20} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold uppercase tracking-tight">Youth Academy</h2>
-            <p className="text-xs text-[var(--text-2)]">Future stars currently in development</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Active Prospects</div>
-          <div className="text-lg font-mono font-bold">{players.length}</div>
-        </div>
+    <div className="space-y-6 h-full overflow-y-auto pr-2 pb-12">
+
+      {/* SUMMARY STATS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded">
+            <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Youth Intake Quality</div>
+            <div className="text-xl font-mono font-bold text-[var(--accent)]">Level 3</div>
+         </div>
+         <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded">
+            <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Academy Size</div>
+            <div className="text-xl font-mono font-bold text-[var(--text-1)]">{players.length} Players</div>
+         </div>
+         <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded">
+            <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Top Prospect Potential</div>
+            <div className="flex items-center gap-2 mt-1">
+               {renderStars(bestPA)}
+               <span className="text-xs font-mono font-bold text-[var(--text-2)]">{bestPA}</span>
+            </div>
+         </div>
+         <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded">
+            <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Next Intake</div>
+            <div className="text-xl font-mono font-bold text-[var(--amber)]">March 2027</div>
+         </div>
       </div>
 
-      <div className="bg-[var(--bg-panel)] border border-[var(--border)] rounded overflow-hidden">
+      {/* YOUTH SQUAD */}
+      <section className="bg-[var(--bg-panel)] border border-[var(--border)] rounded flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)] bg-[#ffffff03] flex items-center justify-between">
+          <h2 className="text-[10px] font-bold uppercase text-[var(--text-2)] tracking-widest flex items-center gap-2">
+            <GraduationCap size={16} /> Academy Prospects
+          </h2>
+        </div>
+
         <DataTable
-          columns={columns}
+          columns={[
+            { key: 'name', label: 'Name', width: 200 },
+            { key: 'age', label: 'Age', width: 60, align: 'center' as const },
+            { key: 'position', label: 'Position', width: 100 },
+            {
+              key: 'pa',
+              label: 'Potential',
+              render: (val: number) => renderStars(val)
+            },
+            {
+              key: 'actions',
+              label: '',
+              align: 'right' as const,
+              render: (_: any, row: YouthPlayer) => (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!club) return;
+                    try {
+                      await promoteYouth(club.id, row.id);
+                      fetch();
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : "Promotion failed");
+                    }
+                  }}
+                  className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--accent)] hover:text-white rounded text-[10px] font-bold uppercase transition-colors"
+                >
+                  Promote
+                </button>
+              )
+            }
+          ]}
           rows={players}
-          emptyMessage="No youth prospects currently in the academy."
+          emptyMessage="No youth players currently in the academy"
         />
-      </div>
+      </section>
 
-      <div className="p-4 bg-[#ffffff03] border border-[var(--border)] rounded flex items-start gap-3">
-        <div className="text-[var(--amber)] mt-0.5">ⓘ</div>
-        <p className="text-[11px] text-[var(--text-2)] leading-relaxed">
-          Youth players are automatically generated every season during the Intake period.
-          Their potential is influenced by your <span className="text-[var(--text-1)] font-bold">Youth Academy facilities</span>.
-          Once they reach 18, they must be promoted to the senior squad or released.
-        </p>
-      </div>
+      {/* INTAKE PREVIEW */}
+      <section className="bg-[var(--bg-panel)] border border-[var(--border)] p-8 rounded border-dashed flex flex-col items-center justify-center text-center space-y-4">
+         <div className="w-16 h-16 bg-[var(--bg-base)] rounded-full flex items-center justify-center text-[var(--text-3)] border border-[var(--border)]">
+            <Calendar size={32} />
+         </div>
+         <div>
+            <h3 className="text-sm font-bold uppercase text-[var(--text-1)]">Annual Youth Intake</h3>
+            <p className="text-xs text-[var(--text-2)] max-w-md mt-2">
+              The next batch of young talent will arrive in the spring of the next season.
+              Your Youth Academy facilities level directly affects the quality of these prospects.
+            </p>
+         </div>
+         <div className="flex gap-8 mt-4">
+            <div className="text-center">
+               <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Countdown</div>
+               <div className="text-lg font-mono font-bold text-[var(--amber)]">~280 Days</div>
+            </div>
+            <div className="text-center">
+               <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Scouting Grade</div>
+               <div className="text-lg font-mono font-bold text-[var(--green)]">B+</div>
+            </div>
+         </div>
+      </section>
+
     </div>
   );
 };
