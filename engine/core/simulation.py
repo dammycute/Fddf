@@ -4,7 +4,7 @@ from collections import defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from engine.models import Base, Club, Fixture, GameMeta, MatchReport, Player, TransferOffer
+from engine.models import Base, Club, Fixture, GameMeta, MatchReport, Player, TransferOffer, NewsEvent, ClubHistory, Facilities, YouthPlayer
 from engine.utils.generator import seed_world
 from engine.systems.fixture_engine import generate_fixtures
 from engine.systems.match_system import MatchSystem
@@ -125,13 +125,136 @@ class SimulationEngine:
         session = self.Session()
         club = session.get(Club, club_id)
         data = {
+            "id": club.id,
             "name": club.name,
             "balance": club.balance,
             "reputation": club.reputation,
-            "squad_size": len(club.players)
+            "squad_size": len(club.players),
+            "transfer_budget": club.transfer_budget,
+            "wage_budget": club.wage_budget
         }
         session.close()
         return data
+
+    def get_squad(self, club_id: int):
+        session = self.Session()
+        players = session.query(Player).filter_by(club_id=club_id).all()
+        results = []
+        for p in players:
+            results.append({
+                "id": p.id,
+                "club_id": p.club_id,
+                "name": p.name,
+                "age": p.age,
+                "nationality": p.nationality,
+                "attributes": p.attributes,
+                "ca": p.ca,
+                "pa": p.pa,
+                "fitness": p.fitness,
+                "stamina": p.stamina,
+                "morale": p.morale
+            })
+        session.close()
+        return results
+
+    def get_facilities(self, club_id: int):
+        session = self.Session()
+        fac = session.query(Facilities).filter_by(club_id=club_id).first()
+        data = None
+        if fac:
+            data = {
+                "id": fac.id,
+                "club_id": fac.club_id,
+                "training_level": fac.training_level,
+                "medical_level": fac.medical_level,
+                "youth_level": fac.youth_level,
+                "training_upgrade_cost": fac.training_upgrade_cost,
+                "medical_upgrade_cost": fac.medical_upgrade_cost,
+                "youth_upgrade_cost": fac.youth_upgrade_cost,
+                "upgrade_in_progress": fac.upgrade_in_progress
+            }
+        session.close()
+        return data
+
+    def get_youth_players(self, club_id: int):
+        session = self.Session()
+        youth = session.query(YouthPlayer).filter_by(club_id=club_id).all()
+        results = []
+        for y in youth:
+            results.append({
+                "id": y.id,
+                "club_id": y.club_id,
+                "name": y.name,
+                "age": y.age,
+                "nationality": y.nationality,
+                "position": y.position,
+                "pa": y.pa,
+                "personality_id": y.personality_id,
+                "intake_season": y.intake_season,
+                "promoted": y.promoted
+            })
+        session.close()
+        return results
+
+    def get_news_feed(self, limit: int = 20):
+        session = self.Session()
+        news = session.query(NewsEvent).order_by(NewsEvent.date.desc()).limit(limit).all()
+        results = []
+        for n in news:
+            results.append({
+                "id": n.id,
+                "title": n.title,
+                "content": n.content,
+                "date": n.date.isoformat(),
+                "importance": n.importance
+            })
+        session.close()
+        return results
+
+    def get_club_history(self, club_id: int):
+        session = self.Session()
+        history = session.query(ClubHistory).filter_by(club_id=club_id).order_by(ClubHistory.season.desc()).all()
+        results = []
+        for h in history:
+            results.append({
+                "id": h.id,
+                "club_id": h.club_id,
+                "season": h.season,
+                "achievement": h.achievement,
+                "data": h.data
+            })
+        session.close()
+        return results
+
+    def upgrade_facility(self, club_id: int, fac_type: str):
+        session = self.Session()
+        club = session.get(Club, club_id)
+        fac = session.query(Facilities).filter_by(club_id=club_id).first()
+
+        if not club or not fac:
+            session.close()
+            return {"ok": False, "error": "Club or Facilities not found"}
+
+        cost = 0
+        if fac_type == 'training': cost = fac.training_upgrade_cost
+        elif fac_type == 'medical': cost = fac.medical_upgrade_cost
+        elif fac_type == 'youth': cost = fac.youth_upgrade_cost
+
+        if club.balance < cost:
+            session.close()
+            return {"ok": False, "error": "Insufficient balance"}
+
+        club.balance -= cost
+        # Simulate upgrade process (1 month)
+        complete_date = self.game_date + datetime.timedelta(days=30)
+        fac.upgrade_in_progress = {
+            "type": fac_type,
+            "complete_date": complete_date.isoformat()
+        }
+
+        session.commit()
+        session.close()
+        return {"ok": True}
 
     def get_fixtures(self, club_id: int):
         """Return a list of fixture dicts where the club is home or away."""

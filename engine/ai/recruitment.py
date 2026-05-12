@@ -149,7 +149,7 @@ class RecruitmentAI:
 
             if accepted:
                 self._execute_transfer(session, offer, player, buyer, seller)
-            else:
+            elif seller:
                 offer.status = 'REJECTED'
                 offer.resolved_date = datetime.datetime.now()
 
