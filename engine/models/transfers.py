@@ -6,8 +6,8 @@ class TransferOffer(Base):
     __tablename__ = 'transfer_offers'
     id = Column(Integer, primary_key=True)
     player_id = Column(Integer, ForeignKey('players.id'), nullable=False)
-    from_club_id = Column(Integer, ForeignKey('clubs.id'), nullable=False)
-    to_club_id = Column(Integer, ForeignKey('clubs.id'), nullable=False)
+    from_club_id = Column(Integer, ForeignKey('clubs.id'), nullable=True)
+    to_club_id = Column(Integer, ForeignKey('clubs.id'), nullable=True)
     fee = Column(Integer, nullable=False)
     status = Column(String, nullable=False) # 'PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'
     created_date = Column(DateTime, nullable=False)

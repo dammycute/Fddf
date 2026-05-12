@@ -50,27 +50,24 @@ function spawnPythonEngine(): void {
   }
 }
 
-// ── Pending response handling (one in-flight command at a time) ──
+// ── Pending response handling ──
 type PendingResolve = (line: string) => void;
-let pendingResolve: PendingResolve | null = null;
-
-function waitForNextLine(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!stdoutRL) {
-      reject(new Error('Python stdout not available'));
-      return;
-    }
-    pendingResolve = resolve;
-  });
-}
+// Map request_id to its resolver
+const pendingRequests = new Map<string, PendingResolve>();
 
 function setupStdoutListener(): void {
   if (!stdoutRL) return;
   stdoutRL.on('line', (line: string) => {
-    if (pendingResolve) {
-      const resolve = pendingResolve;
-      pendingResolve = null;
-      resolve(line);
+    try {
+      const parsed = JSON.parse(line);
+      const requestId = parsed.request_id;
+      if (requestId && pendingRequests.has(requestId)) {
+        const resolve = pendingRequests.get(requestId)!;
+        pendingRequests.delete(requestId);
+        resolve(line);
+      }
+    } catch {
+      // Not a JSON response or missing request_id, ignore
     }
   });
 }
@@ -86,13 +83,22 @@ function registerIpcHandlers(): void {
       return;
     }
 
+    // Attach request_id if present in payload (sent from UI)
+    const requestId = payload.request_id || Math.random().toString(36).slice(2);
+    const cmdWithId = { ...payload, request_id: requestId };
+
     try {
       // Serialize and send to Python stdin (one JSON line)
-      const jsonLine = JSON.stringify(payload) + '\n';
+      const jsonLine = JSON.stringify(cmdWithId) + '\n';
+
+      const responsePromise = new Promise<string>((resolve) => {
+        pendingRequests.set(requestId, resolve);
+      });
+
       pythonProcess.stdin.write(jsonLine);
 
-      // Wait for the next stdout line from Python
-      const responseLine = await waitForNextLine();
+      // Wait for the specific response for this request_id
+      const responseLine = await responsePromise;
 
       let parsed: GameResponse;
       try {
@@ -107,6 +113,7 @@ function registerIpcHandlers(): void {
       event.reply('game:response', {
         ok: false,
         error: message,
+        request_id: requestId
       } satisfies GameResponse);
     }
   });

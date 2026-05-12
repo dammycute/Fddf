@@ -22,6 +22,36 @@ def dispatch(cmd, engine):
     elif cmd_type == "GET_LEAGUE_TABLE":
         return engine.get_league_table(payload["league_id"])
 
+    elif cmd_type == "GET_TRANSFER_OFFERS":
+        return engine.get_transfer_offers(payload["club_id"])
+
+    elif cmd_type == "GET_MANAGER_INFO":
+        return engine.get_manager_info(payload["club_id"])
+
+    elif cmd_type == "RESPOND_TO_OFFER":
+        return engine.respond_to_offer(payload["offer_id"], payload["accept"])
+
+    elif cmd_type == "GET_MATCH_REPORT":
+        return engine.get_match_report(payload["fixture_id"])
+
+    elif cmd_type == "GET_SQUAD":
+        return engine.get_squad(payload["club_id"])
+
+    elif cmd_type == "GET_FACILITIES":
+        return engine.get_facilities(payload["club_id"])
+
+    elif cmd_type == "GET_YOUTH":
+        return engine.get_youth_players(payload["club_id"])
+
+    elif cmd_type == "GET_NEWS_FEED":
+        return engine.get_news_feed(payload.get("limit", 20))
+
+    elif cmd_type == "GET_CLUB_HISTORY":
+        return engine.get_club_history(payload["club_id"])
+
+    elif cmd_type == "UPGRADE_FACILITY":
+        return engine.upgrade_facility(payload["club_id"], payload["type"])
+
     else:
         raise ValueError(f"Unknown command: {cmd_type}")
 
@@ -38,10 +68,12 @@ def main():
             continue
         try:
             cmd = json.loads(line)
+            request_id = cmd.get("request_id")
             result = dispatch(cmd, engine)
-            print(json.dumps({"ok": True, "data": result}), flush=True)
+            print(json.dumps({"ok": True, "data": result, "request_id": request_id}), flush=True)
         except Exception as e:
-            print(json.dumps({"ok": False, "error": str(e)}), flush=True)
+            request_id = cmd.get("request_id") if 'cmd' in locals() else None
+            print(json.dumps({"ok": False, "error": str(e), "request_id": request_id}), flush=True)
 
 
 if __name__ == "__main__":
