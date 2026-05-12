@@ -52,6 +52,9 @@ def dispatch(cmd, engine):
     elif cmd_type == "UPGRADE_FACILITY":
         return engine.upgrade_facility(payload["club_id"], payload["type"])
 
+    elif cmd_type == "GET_FAN_SENTIMENT":
+        return engine.get_fan_sentiment(payload["club_id"])
+
     else:
         raise ValueError(f"Unknown command: {cmd_type}")
 
