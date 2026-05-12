@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  LayoutDashboard, Users, Calendar, ArrowsLeftRight,
+  LayoutDashboard, Users, Calendar, ArrowLeftRight,
   BarChart3, Building2, School, Trophy, Bell,
   ChevronLeft, ChevronRight, Play
 } from 'lucide-react';
@@ -14,14 +14,20 @@ interface ShellProps {
 }
 
 export const Shell: React.FC<ShellProps> = ({ children }) => {
-  const { club, leagueTable, manager, isLoading, tick, playerClubId } = useGameStore();
+  const { club, leagueTable, manager, isLoading, tick, fanSentiment } = useGameStore();
   const { activePage, setPage, sidebarCollapsed, toggleSidebar } = useUIStore();
+
+  const formatBalance = (val: number) => {
+    if (val >= 1_000_000) return `£${(val / 1_000_000).toFixed(1)}m`;
+    if (val >= 1_000) return `£${(val / 1_000).toFixed(0)}k`;
+    return `£${val}`;
+  };
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'squad', label: 'Squad', icon: Users },
     { id: 'fixtures', label: 'Fixtures', icon: Calendar },
-    { id: 'transfers', label: 'Transfers', icon: ArrowsLeftRight },
+    { id: 'transfers', label: 'Transfers', icon: ArrowLeftRight },
     { id: 'finances', label: 'Finances', icon: BarChart3 },
     { id: 'facilities', label: 'Facilities', icon: Building2 },
     { id: 'youth', label: 'Youth Academy', icon: School },
@@ -37,17 +43,17 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
 
       {/* LEFT SIDEBAR */}
       <aside
-        className={`row-span-2 bg-[#1a1d26] border-r border-[#ffffff12] flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-[56px]' : 'w-[240px]'}`}
+        className={`row-span-2 bg-[var(--bg-panel)] border-r border-[var(--border)] flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-[56px]' : 'w-[240px]'}`}
       >
         {/* Sidebar Header */}
-        <div className="h-16 flex items-center px-3 border-b border-[#ffffff12] gap-3 overflow-hidden">
-          <div className="w-8 h-8 rounded-full bg-[#3b82f6] flex-shrink-0 flex items-center justify-center font-bold text-xs">
+        <div className="h-16 flex items-center px-3 border-b border-[var(--border)] gap-3 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex-shrink-0 flex items-center justify-center font-bold text-xs text-white">
             {club?.name?.substring(0, 2).toUpperCase() || 'FC'}
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-bold truncate">{club?.name || 'Football Club'}</div>
-              <div className="text-[10px] text-[#9399a8] truncate">Premier League</div>
+              <div className="text-sm font-bold truncate text-[var(--text-1)]">{club?.name || 'Football Club'}</div>
+              <div className="text-[10px] text-[var(--text-2)] truncate">Premier League</div>
             </div>
           )}
         </div>
@@ -63,10 +69,10 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
                 onClick={() => setPage(item.id)}
                 className={`
                   w-full h-10 flex items-center px-4 gap-3 transition-colors relative group
-                  ${isActive ? 'bg-[#21253a] text-[#3b82f6]' : 'text-[#9399a8] hover:bg-[#21253a] hover:text-[#e8eaf0]'}
+                  ${isActive ? 'bg-[var(--bg-raised)] text-[var(--accent)]' : 'text-[var(--text-2)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-1)]'}
                 `}
               >
-                {isActive && <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#3b82f6]" />}
+                {isActive && <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)]" />}
                 <Icon size={20} className="flex-shrink-0" />
                 {!sidebarCollapsed && <span className="text-[13px] font-medium">{item.label}</span>}
               </button>
@@ -75,16 +81,16 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-[#ffffff12] space-y-3">
+        <div className="p-3 border-t border-[var(--border)] space-y-3">
           <div className="flex items-center justify-between">
             {!sidebarCollapsed && (
-               <div className="text-[11px] font-mono text-[#9399a8]">
+               <div className="text-[11px] font-mono text-[var(--text-2)]">
                 {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
             )}
             <button
               onClick={toggleSidebar}
-              className="p-1 hover:bg-[#21253a] rounded text-[#9399a8]"
+              className="p-1 hover:bg-[var(--bg-raised)] rounded text-[var(--text-2)]"
             >
               {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
@@ -94,8 +100,8 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
             onClick={tick}
             disabled={isLoading}
             className={`
-              w-full h-10 bg-[#3b82f6] hover:bg-[#1d4ed8] disabled:bg-[#3b82f650]
-              rounded flex items-center justify-center gap-2 font-bold text-sm transition-all
+              w-full h-10 bg-[var(--accent)] hover:bg-[var(--accent-dim)] disabled:bg-[var(--accent)] disabled:opacity-50
+              rounded flex items-center justify-center gap-2 font-bold text-sm transition-all text-white
               ${sidebarCollapsed ? 'p-0' : 'px-4'}
             `}
           >
@@ -112,9 +118,9 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
       </aside>
 
       {/* TOP BAR */}
-      <header className="bg-[#1a1d26] border-b border-[#ffffff12] flex items-center px-6 justify-between">
+      <header className="bg-[var(--bg-panel)] border-b border-[var(--border)] flex items-center px-6 justify-between">
         <div className="flex items-center gap-8">
-          <h1 className="text-sm font-bold uppercase tracking-wider text-[#9399a8]">
+          <h1 className="text-sm font-bold uppercase tracking-wider text-[var(--text-2)]">
             {activePage}
           </h1>
 
@@ -136,21 +142,21 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
         <div className="flex items-center gap-6">
           {/* Balance */}
           <div className="text-right">
-            <div className="text-[10px] text-[#9399a8] uppercase font-bold tracking-tight">Balance</div>
-            <div className="text-sm font-mono font-bold text-[#22c55e]">
-              £{(club?.balance || 0).toLocaleString()}
+            <div className="text-[10px] text-[var(--text-2)] uppercase font-bold tracking-tight">Balance</div>
+            <div className="text-sm font-mono font-bold text-[var(--green)]">
+              {formatBalance(club?.balance || 0)}
             </div>
           </div>
 
           {/* Fan Sentiment */}
           <div className="w-24">
-            <div className="text-[10px] text-[#9399a8] uppercase font-bold tracking-tight mb-1">Fans</div>
-            <StatBar value={75} size="sm" />
+            <div className="text-[10px] text-[var(--text-2)] uppercase font-bold tracking-tight mb-1">Fans</div>
+            <StatBar value={fanSentiment} size="sm" />
           </div>
 
           {/* Manager Morale */}
           <div className="w-24">
-            <div className="text-[10px] text-[#9399a8] uppercase font-bold tracking-tight mb-1">Manager</div>
+            <div className="text-[10px] text-[var(--text-2)] uppercase font-bold tracking-tight mb-1">Manager</div>
             <StatBar value={manager?.morale || 50} size="sm" />
           </div>
         </div>

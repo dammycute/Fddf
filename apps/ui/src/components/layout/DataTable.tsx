@@ -5,6 +5,7 @@ interface Column {
   label: string;
   width?: number; // px
   align?: 'left' | 'right' | 'center';
+  sortable?: boolean;
   render?: (value: any, row: any) => ReactNode;
 }
 
@@ -14,6 +15,9 @@ interface DataTableProps {
   onRowClick?: (row: any) => void;
   selectedRowId?: number | string;
   emptyMessage?: string;
+  sortKey?: string;
+  sortDir?: 'asc' | 'desc';
+  onSort?: (key: string) => void;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -21,7 +25,10 @@ export const DataTable: React.FC<DataTableProps> = ({
   rows,
   onRowClick,
   selectedRowId,
-  emptyMessage = "No data available"
+  emptyMessage = "No data available",
+  sortKey,
+  sortDir,
+  onSort
 }) => {
   return (
     <div className="w-full overflow-x-auto">
@@ -31,13 +38,24 @@ export const DataTable: React.FC<DataTableProps> = ({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-3 py-2 text-[11px] font-bold text-[#9399a8] uppercase tracking-[0.1em] whitespace-nowrap"
+                onClick={() => col.sortable && onSort?.(col.key)}
+                className={`
+                  px-3 py-2 text-[11px] font-bold text-[var(--text-2)] uppercase tracking-[0.1em] whitespace-nowrap
+                  ${col.sortable ? 'cursor-pointer hover:text-[var(--text-1)] select-none' : ''}
+                `}
                 style={{
                   width: col.width ? `${col.width}px` : 'auto',
                   textAlign: col.align || 'left'
                 }}
               >
-                {col.label}
+                <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}>
+                  {col.label}
+                  {col.sortable && sortKey === col.key && (
+                    <span className="text-[var(--accent)] font-black">
+                      {sortDir === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
             ))}
           </tr>

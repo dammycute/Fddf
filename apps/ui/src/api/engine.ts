@@ -103,6 +103,9 @@ export const getNewsFeed = (limit?: number) =>
 export const getClubHistory = (clubId: number) =>
   sendCommand<ClubHistory[]>({ type: 'GET_CLUB_HISTORY', payload: { club_id: clubId } });
 
+export const getFinancials = (clubId: number) =>
+  sendCommand<{ records: any[], sponsorships: any[] }>({ type: 'GET_FINANCIALS', payload: { club_id: clubId } });
+
 export const getFacilities = (clubId: number) =>
   sendCommand<Facilities>({ type: 'GET_FACILITIES', payload: { club_id: clubId } });
 
@@ -114,6 +117,9 @@ export const nextTick = () =>
 
 export const respondToOffer = (offerId: number, accept: boolean) =>
   sendCommand<void>({ type: 'RESPOND_TO_OFFER', payload: { offer_id: offerId, accept } });
+
+export const listPlayer = (playerId: number, fee: number) =>
+  sendCommand<void>({ type: 'LIST_PLAYER', payload: { player_id: playerId, fee } });
 
 export const upgradeFacility = (clubId: number, type: 'training' | 'medical' | 'youth') =>
   sendCommand<void>({ type: 'UPGRADE_FACILITY', payload: { club_id: clubId, type } });
