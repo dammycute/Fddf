@@ -4,7 +4,7 @@ from collections import defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from engine.models.base import Base, Club, Fixture, GameMeta
+from engine.models import Base, Club, Fixture, GameMeta
 from engine.utils.generator import seed_world
 from engine.systems.fixture_engine import generate_fixtures
 from engine.systems.match_system import MatchSystem

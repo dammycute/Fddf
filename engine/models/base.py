@@ -28,6 +28,12 @@ class Club(Base):
     medical_lvl = Column(Integer, default=1)
 
     players = relationship("Player", back_populates="club")
+    manager = relationship("Manager", back_populates="club", uselist=False)
+    contracts = relationship("PlayerContract", back_populates="club")
+    facilities = relationship("Facilities", back_populates="club", uselist=False)
+    financial_records = relationship("FinancialRecord", back_populates="club")
+    youth_players = relationship("YouthPlayer", back_populates="club")
+    scouts = relationship("Scout", back_populates="club")
 
 class Player(Base):
     __tablename__ = 'players'
@@ -49,6 +55,8 @@ class Player(Base):
     morale = Column(Integer, default=50)
 
     club = relationship("Club", back_populates="players")
+    contract = relationship("PlayerContract", back_populates="player", uselist=False)
+    transfer_offers = relationship("TransferOffer", back_populates="player")
 
 class League(Base):
     __tablename__ = 'leagues'
