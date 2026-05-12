@@ -9,6 +9,10 @@ from engine.utils.generator import seed_world
 from engine.systems.fixture_engine import generate_fixtures
 from engine.systems.match_system import MatchSystem
 from engine.systems.economy import TransferSystem, FinanceSystem
+from engine.systems.player_development import PlayerDevelopmentSystem
+from engine.systems.morale import MoraleSystem
+from engine.systems.injury import InjurySystem
+from engine.systems.aging import AgingSystem
 import os
 
 
@@ -54,11 +58,33 @@ class SimulationEngine:
     def run_tick(self):
         session = self.Session()
         try:
+            # Core gameplay systems
             MatchSystem().process_pending_matches(session, self.game_date)
             FinanceSystem().process_daily_finances(session)
 
             if self.game_date.weekday() == 0:  # Mondays only
                 TransferSystem().process_ai_transfers(session)
+
+            # New simulation systems
+            try:
+                InjurySystem().process(session, self.game_date)
+            except Exception as e:
+                print(f"InjurySystem failed: {e}")
+
+            try:
+                MoraleSystem().process(session, self.game_date)
+            except Exception as e:
+                print(f"MoraleSystem failed: {e}")
+
+            try:
+                PlayerDevelopmentSystem().process(session)
+            except Exception as e:
+                print(f"PlayerDevelopmentSystem failed: {e}")
+
+            try:
+                AgingSystem().process(session, self.game_date)
+            except Exception as e:
+                print(f"AgingSystem failed: {e}")
 
             self.game_date += datetime.timedelta(days=1)
             self._save_game_date(session)
