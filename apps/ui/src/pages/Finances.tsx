@@ -1,27 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getFinancials } from '../api/engine';
 import { DataTable } from '../components/layout/DataTable';
-import { TrendingUp, TrendingDown, Landmark, Wallet } from 'lucide-react';
+import { Wallet, Landmark, TrendingUp, Filter } from 'lucide-react';
 
 export const Finances: React.FC = () => {
-  const { club, isLoading: gameLoading } = useGameStore();
+  const { club, squad } = useGameStore();
   const [data, setData] = useState<{ records: any[], sponsorships: any[] } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState('ALL');
 
   useEffect(() => {
-    const fetchFinances = async () => {
+    const fetch = async () => {
       if (!club) return;
       try {
         const res = await getFinancials(club.id);
         setData(res);
       } catch (error) {
-        console.error("Failed to fetch finances:", error);
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchFinances();
+    fetch();
   }, [club]);
 
   const formatCurrency = (val: number) => {
@@ -30,91 +31,158 @@ export const Finances: React.FC = () => {
     if (absVal >= 1_000_000) formatted = `£${(absVal / 1_000_000).toFixed(2)}m`;
     else if (absVal >= 1_000) formatted = `£${(absVal / 1_000).toFixed(0)}k`;
     else formatted = `£${absVal}`;
-    return val < 0 ? `(${formatted})` : formatted;
+    return val < 0 ? `-${formatted}` : `+${formatted}`;
   };
 
-  const columns = [
-    {
-      key: 'date',
-      label: 'Date',
-      width: 120,
-      render: (val: string) => <span className="font-mono text-[var(--text-3)]">{new Date(val).toLocaleDateString()}</span>
-    },
-    { key: 'description', label: 'Description' },
-    { key: 'type', label: 'Type', width: 120 },
-    {
-      key: 'amount',
-      label: 'Amount',
-      align: 'right' as const,
-      render: (val: number) => (
-        <span className={`font-mono font-bold ${val >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
-          {formatCurrency(val)}
-        </span>
-      )
+  const chartPoints = useMemo(() => {
+    if (!data?.records) return [];
+    // Aggregate by date, take last 30
+    const aggregated = new Map<string, number>();
+    let runningBalance = club?.balance || 0;
+
+    // Simple mock for chart if no records
+    if (data.records.length === 0) {
+      return Array.from({length: 10}).map((_, i) => ({ x: i * 10, y: 50 + Math.sin(i) * 20 }));
     }
-  ];
 
-  if (isLoading || gameLoading) {
-    return <div className="p-8 text-center animate-pulse text-[var(--text-2)] uppercase tracking-widest">Auditing Accounts...</div>;
-  }
+    const sortedRecords = [...data.records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const netBalance = data?.records.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+    // We want to show the balance *over time*, so we'd need history.
+    // Since we only have transaction records, we'll simulate a path.
+    return sortedRecords.slice(-30).map((r, i) => {
+      return { x: i * 10, y: 100 - (r.amount / 1000000) }; // Simplified mapping
+    });
+  }, [data, club]);
+
+  const filteredRecords = useMemo(() => {
+    if (!data?.records) return [];
+    return data.records.filter(r => typeFilter === 'ALL' || r.type === typeFilter);
+  }, [data, typeFilter]);
+
+  const weeklyWages = useMemo(() => {
+    // Sum of active contracts / 52
+    const totalAnnual = squad.reduce((acc, p) => acc + (p.contract?.wage || 0) * 52, 0);
+    return totalAnnual / 52;
+  }, [squad]);
+
+  const projectedIncome = useMemo(() => {
+    return data?.sponsorships.reduce((acc, s) => acc + s.amount, 0) || 0;
+  }, [data]);
+
+  if (isLoading) return <div className="p-8 text-center animate-pulse uppercase tracking-widest text-[var(--text-3)]">Auditing Accounts...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4">
-          <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Overall Balance</div>
-          <div className="text-xl font-mono font-bold text-[var(--text-1)]">{formatCurrency(club?.balance || 0)}</div>
-        </div>
-        <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4">
-          <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Transfer Budget</div>
-          <div className="text-xl font-mono font-bold text-[var(--accent)]">{formatCurrency(club?.transfer_budget || 0)}</div>
-        </div>
-        <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4">
-          <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Weekly Wage Bill</div>
-          <div className="text-xl font-mono font-bold text-[var(--amber)]">{formatCurrency(club?.wage_budget || 0)}</div>
-        </div>
-        <div className="bg-[var(--bg-panel)] border border-[var(--border)] p-4">
-          <div className="text-[10px] text-[var(--text-3)] uppercase font-bold mb-1">Monthly Net</div>
-          <div className={`text-xl font-mono font-bold ${netBalance >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
-            {formatCurrency(netBalance)}
-          </div>
-        </div>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 h-full overflow-hidden">
 
-      <div className="grid grid-cols-[1fr_300px] gap-6">
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-2)] flex items-center gap-2">
-            <Wallet size={16} /> Recent Transactions
+      {/* LEFT COLUMN: CHARTS & SUMMARY */}
+      <div className="space-y-6 overflow-y-auto pr-2">
+        <section className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded">
+          <h2 className="text-[10px] font-bold uppercase text-[var(--text-2)] mb-4 tracking-widest flex items-center gap-2">
+            <TrendingUp size={14} /> Balance Over Time
           </h2>
-          <div className="bg-[var(--bg-panel)] border border-[var(--border)] rounded overflow-hidden">
-            <DataTable columns={columns} rows={data?.records || []} emptyMessage="No transactions this month." />
+          <div className="h-[200px] w-full bg-[var(--bg-base)] rounded relative overflow-hidden">
+            <svg viewBox="0 0 100 100" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+               <polyline
+                 fill="none"
+                 stroke={ (club?.balance || 0) >= 0 ? "var(--green)" : "var(--red)" }
+                 strokeWidth="2"
+                 points={chartPoints.map(p => `${p.x},${p.y}`).join(' ')}
+               />
+            </svg>
+            <div className="absolute bottom-2 left-2 text-[10px] text-[var(--text-3)] font-mono">30D History</div>
+            <div className="absolute top-2 right-2 text-[10px] text-[var(--text-3)] font-mono">{formatCurrency(club?.balance || 0)}</div>
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-2)] flex items-center gap-2">
-            <Landmark size={16} /> Sponsorships
+        <section className="bg-[var(--bg-panel)] border border-[var(--border)] p-4 rounded space-y-6">
+          <h2 className="text-[10px] font-bold uppercase text-[var(--text-2)] mb-2 tracking-widest flex items-center gap-2">
+            <Landmark size={14} /> Budget Summary
           </h2>
-          <div className="space-y-2">
-            {data?.sponsorships.map(s => (
-              <div key={s.id} className="bg-[var(--bg-panel)] border border-[var(--border)] p-4">
-                <div className="text-xs font-bold text-[var(--text-1)]">{s.sponsor}</div>
-                <div className="flex justify-between items-end mt-2">
-                  <div className="text-sm font-mono text-[var(--green)] font-bold">{formatCurrency(s.amount)}/yr</div>
-                  <div className="text-[10px] text-[var(--text-3)] uppercase">Ends S{s.end_season}</div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Total Balance</div>
+              <div className="text-2xl font-mono font-bold text-[var(--text-1)] tracking-tight">
+                {formatCurrency(club?.balance || 0).replace('+', '')}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Weekly Wages</div>
+                <div className="text-sm font-mono font-bold text-[var(--amber)]">
+                  £{weeklyWages.toLocaleString()}
                 </div>
               </div>
-            ))}
-            {(!data?.sponsorships || data.sponsorships.length === 0) && (
-              <div className="p-4 border border-dashed border-[var(--border)] text-center text-xs text-[var(--text-3)]">
-                No active sponsorship deals.
+              <div>
+                <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Transfer Budget</div>
+                <div className="text-sm font-mono font-bold text-[var(--accent)]">
+                  {formatCurrency(club?.transfer_budget || 0).replace('+', '')}
+                </div>
               </div>
-            )}
+            </div>
+
+            <div>
+              <div className="text-[10px] text-[var(--text-3)] uppercase font-bold">Projected Income (Sponsorships)</div>
+              <div className="text-sm font-mono font-bold text-[var(--green)]">
+                {formatCurrency(projectedIncome).replace('+', '')} / Season
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* RIGHT COLUMN: TRANSACTION LOG */}
+      <section className="bg-[var(--bg-panel)] border border-[var(--border)] rounded flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)] flex justify-between items-center bg-[#ffffff03]">
+          <h2 className="text-[10px] font-bold uppercase text-[var(--text-2)] tracking-widest flex items-center gap-2">
+            <Wallet size={14} /> Transaction Log
+          </h2>
+          <div className="flex items-center gap-2">
+             <Filter size={12} className="text-[var(--text-3)]" />
+             <select
+               value={typeFilter}
+               onChange={(e) => setTypeFilter(e.target.value)}
+               className="bg-[var(--bg-input)] border-none text-[11px] font-bold uppercase py-1 px-2 rounded outline-none"
+             >
+               <option value="ALL">All Types</option>
+               <option value="WAGE">Wages</option>
+               <option value="TRANSFER_IN">Transfers (In)</option>
+               <option value="TRANSFER_OUT">Transfers (Out)</option>
+               <option value="TICKET">Gate Receipts</option>
+               <option value="SPONSORSHIP">Sponsorship</option>
+             </select>
           </div>
         </div>
-      </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <DataTable
+            columns={[
+              {
+                key: 'date',
+                label: 'Date',
+                width: 100,
+                render: (val) => <span className="text-[var(--text-3)] font-mono">{new Date(val).toLocaleDateString()}</span>
+              },
+              { key: 'type', label: 'Type', width: 120 },
+              { key: 'description', label: 'Description' },
+              {
+                key: 'amount',
+                label: 'Amount',
+                align: 'right' as const,
+                render: (val: number) => (
+                  <span className={`font-mono font-bold ${val >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
+                    {formatCurrency(val)}
+                  </span>
+                )
+              }
+            ]}
+            rows={filteredRecords}
+            emptyMessage="No financial records found"
+          />
+        </div>
+      </section>
+
     </div>
   );
 };

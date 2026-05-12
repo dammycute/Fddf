@@ -9,11 +9,13 @@ interface UIState {
   selectedPlayerId: number | null;
   selectedFixtureId: number | null;
   sidebarCollapsed: boolean;
+  readNewsIds: Set<number>;
 
   setPage: (page: ActivePage) => void;
   selectPlayer: (id: number | null) => void;
   selectFixture: (id: number | null) => void;
   toggleSidebar: () => void;
+  markRead: (id: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -21,9 +23,15 @@ export const useUIStore = create<UIState>((set) => ({
   selectedPlayerId: null,
   selectedFixtureId: null,
   sidebarCollapsed: false,
+  readNewsIds: new Set<number>(),
 
   setPage: (activePage) => set({ activePage }),
   selectPlayer: (selectedPlayerId) => set({ selectedPlayerId }),
   selectFixture: (selectedFixtureId) => set({ selectedFixtureId }),
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }))
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  markRead: (id) => set((state) => {
+    const next = new Set(state.readNewsIds);
+    next.add(id);
+    return { readNewsIds: next };
+  })
 }));

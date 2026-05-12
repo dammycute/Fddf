@@ -14,14 +14,16 @@ interface ShellProps {
 }
 
 export const Shell: React.FC<ShellProps> = ({ children }) => {
-  const { club, leagueTable, manager, isLoading, tick, fanSentiment } = useGameStore();
-  const { activePage, setPage, sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { club, leagueTable, manager, isLoading, tick, fanSentiment, newsFeed } = useGameStore();
+  const { activePage, setPage, sidebarCollapsed, toggleSidebar, readNewsIds } = useUIStore();
 
   const formatBalance = (val: number) => {
     if (val >= 1_000_000) return `£${(val / 1_000_000).toFixed(1)}m`;
     if (val >= 1_000) return `£${(val / 1_000).toFixed(0)}k`;
     return `£${val}`;
   };
+
+  const unreadImportantCount = newsFeed.filter(n => n.importance >= 2 && !readNewsIds.has(n.id)).length;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -32,7 +34,7 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
     { id: 'facilities', label: 'Facilities', icon: Building2 },
     { id: 'youth', label: 'Youth Academy', icon: School },
     { id: 'history', label: 'History', icon: Trophy },
-    { id: 'inbox', label: 'Inbox', icon: Bell },
+    { id: 'inbox', label: 'Inbox', icon: Bell, badge: unreadImportantCount > 0 ? unreadImportantCount : undefined },
   ] as const;
 
   const playerClubStanding = leagueTable.find(r => r.club_name === club?.name);
@@ -73,7 +75,14 @@ export const Shell: React.FC<ShellProps> = ({ children }) => {
                 `}
               >
                 {isActive && <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)]" />}
-                <Icon size={20} className="flex-shrink-0" />
+                <div className="relative">
+                  <Icon size={20} className="flex-shrink-0" />
+                  {item.badge !== undefined && (
+                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--red)] text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-panel)]">
+                      {item.badge}
+                    </div>
+                  )}
+                </div>
                 {!sidebarCollapsed && <span className="text-[13px] font-medium">{item.label}</span>}
               </button>
             );

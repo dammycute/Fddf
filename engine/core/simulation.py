@@ -267,6 +267,78 @@ class SimulationEngine:
         session.close()
         return results
 
+    def promote_youth(self, club_id: int, youth_player_id: int):
+        session = self.Session()
+        yp = session.get(YouthPlayer, youth_player_id)
+        if not yp or yp.club_id != club_id:
+            session.close()
+            return {"ok": False, "error": "Youth player not found or not at this club"}
+
+        # Create senior player
+        p = Player(
+            club_id=club_id,
+            name=yp.name,
+            age=yp.age,
+            nationality=yp.nationality,
+            ca=random.randint(yp.pa - 40, yp.pa - 20), # Start lower than potential
+            pa=yp.pa,
+            fitness=100,
+            stamina=100,
+            morale=80,
+            attributes={
+                "position": yp.position,
+                "pace": random.randint(10, 15),
+                "passing": random.randint(10, 15),
+                "finishing": random.randint(10, 15)
+            }
+        )
+        session.add(p)
+
+        # Mark as promoted or just delete from youth table
+        session.delete(yp)
+        session.commit()
+        session.close()
+        return {"ok": True}
+
+    def remove_from_list(self, club_id: int, player_id: int):
+        session = self.Session()
+        offer = (
+            session.query(TransferOffer)
+            .filter_by(player_id=player_id, from_club_id=club_id, status='LISTED')
+            .first()
+        )
+        if not offer:
+            session.close()
+            return {"ok": False, "error": "Listing not found"}
+
+        session.delete(offer)
+        session.commit()
+        session.close()
+        return {"ok": True}
+
+    def get_scout_reports(self, club_id: int):
+        from engine.models.staff import ScoutReport, Scout
+        session = self.Session()
+        reports = session.query(ScoutReport).filter_by(club_id=club_id).all()
+        results = []
+        for r in reports:
+            player = session.get(Player, r.player_id)
+            scout = session.get(Scout, r.scout_id)
+            club = session.get(Club, player.club_id) if player and player.club_id else None
+            results.append({
+                "id": r.id,
+                "player_id": r.player_id,
+                "name": player.name if player else "Unknown",
+                "position": r.attributes_snapshot.get('position', 'CM'),
+                "ca": r.ca_estimate,
+                "pa": r.pa_estimate,
+                "club_name": club.name if club else "Free Agent",
+                "scout_name": scout.name if scout else "Scout",
+                "created_date": r.created_date.isoformat()
+            })
+        session.close()
+        return results
+
     def upgrade_facility(self, club_id: int, fac_type: str):
         session = self.Session()
         club = session.get(Club, club_id)

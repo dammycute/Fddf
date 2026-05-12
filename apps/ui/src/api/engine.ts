@@ -42,9 +42,14 @@ if (typeof window !== 'undefined' && window.api) {
         if (cmd.type === 'GET_FIXTURES') data = [];
         if (cmd.type === 'GET_LEAGUE_TABLE') data = [];
         if (cmd.type === 'GET_MANAGER_INFO') data = { name: 'Mock Manager', morale: 80 };
-        if (cmd.type === 'GET_TRANSFER_OFFERS') data = [];
-        if (cmd.type === 'GET_NEWS_FEED') data = [];
-        if (cmd.type === 'GET_FACILITIES') data = { training_level: 3, medical_level: 3, youth_level: 3 };
+        if (cmd.type === 'GET_TRANSFER_OFFERS') data = [
+          { id: 1, player_name: 'John Doe', from_club_name: 'Arsenal', to_club_name: 'Mock FC', fee: 50000000, status: 'PENDING', to_club_id: 1 }
+        ];
+        if (cmd.type === 'GET_NEWS_FEED') data = [
+          { id: 1, title: 'TRANSFER RUMOUR: Star signs', content: 'Big news today...', date: new Date().toISOString(), importance: 3 },
+          { id: 2, title: 'Injury Update', content: 'Player is out for weeks', date: new Date().toISOString(), importance: 2 }
+        ];
+        if (cmd.type === 'GET_FACILITIES') data = { training_level: 3, medical_level: 3, youth_level: 3, training_upgrade_cost: 1000000, medical_upgrade_cost: 1000000, youth_upgrade_cost: 1000000 };
         if (cmd.type === 'GET_YOUTH') data = [];
 
         const res: GameResponse = { ok: true, data, request_id: cmd.request_id };
@@ -123,6 +128,15 @@ export const listPlayer = (playerId: number, fee: number) =>
 
 export const upgradeFacility = (clubId: number, type: 'training' | 'medical' | 'youth') =>
   sendCommand<void>({ type: 'UPGRADE_FACILITY', payload: { club_id: clubId, type } });
+
+export const promoteYouth = (clubId: number, youthPlayerId: number) =>
+  sendCommand<void>({ type: 'PROMOTE_YOUTH', payload: { club_id: clubId, youth_player_id: youthPlayerId } });
+
+export const removeFromList = (clubId: number, playerId: number) =>
+  sendCommand<void>({ type: 'REMOVE_FROM_LIST', payload: { club_id: clubId, player_id: playerId } });
+
+export const getScoutReports = (clubId: number) =>
+  sendCommand<any[]>({ type: 'GET_SCOUT_REPORTS', payload: { club_id: clubId } });
 
 export const getFanSentiment = (clubId: number) =>
   sendCommand<FanSentiment>({ type: 'GET_FAN_SENTIMENT', payload: { club_id: clubId } });
